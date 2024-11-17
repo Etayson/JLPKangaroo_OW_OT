@@ -2,6 +2,11 @@
 Make changes in the Constants.h to get only wild kangaroo:  
 #define ONLY_WILD  
 //#define ONLY_TAME  
+
 Or only tame kangaroo:  
 //#define ONLY_WILD  
 #define ONLY_TAME 
+
+Or both kangaroos:  
+//#define ONLY_WILD  
+//#define ONLY_TAME 
