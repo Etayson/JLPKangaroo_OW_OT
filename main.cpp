@@ -154,6 +154,11 @@ static bool serverMode = false;
 static string serverIP = "";
 static string outputFile = "";
 static bool splitWorkFile = false;
+static string Gx ="79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798";
+static string Gy ="483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8";
+static string multG = "1";
+static string prejmpbits = "0";
+static string multiplerJMPstr = "1";
 
 int main(int argc, char* argv[]) {
 
@@ -161,9 +166,7 @@ int main(int argc, char* argv[]) {
   Timer::Init();
   rseed(Timer::getSeed32());
 
-  // Init SecpK1
-  Secp256K1 *secp = new Secp256K1();
-  secp->Init();
+  
 
   int a = 1;
   nbCPUThread = Timer::getCoreNumber();
@@ -282,7 +285,33 @@ int main(int argc, char* argv[]) {
     } else if(strcmp(argv[a],"-check") == 0) {
       checkFlag = true;
       a++;
+    }else if (strcmp(argv[a], "-gx") == 0) {
+        a++;
+        Gx = string(argv[a]);
+        printf("New Gx %s \n", argv[a]);
+        a++;
+    }else if (strcmp(argv[a], "-gy") == 0) {
+        a++;
+        Gy = string(argv[a]);
+        printf("New Gy %s \n", argv[a]);
+        a++;
+    }else if (strcmp(argv[a], "-gmult") == 0) {
+        a++;
+        multG = string(argv[a]);
+        printf("New Gmult %s \n", argv[a]);
+        a++;
+    }else if (strcmp(argv[a], "-jmpbit") == 0) {
+        a++;
+        prejmpbits = string(argv[a]);
+        printf("New JMPbit %s \n", argv[a]);
+        a++;
+    }else if (strcmp(argv[a], "-jmpmult") == 0) {
+        a++;
+        multiplerJMPstr = string(argv[a]);
+        printf("New JMPmult %s \n", argv[a]);
+        a++;
     }
+
     else if(a == argc - 1) {
       configFile = string(argv[a]);
       a++;
@@ -292,6 +321,10 @@ int main(int argc, char* argv[]) {
     }
 
   }
+
+  // Init SecpK1
+  Secp256K1* secp = new Secp256K1();
+  secp->Init(Gx,Gy);
 
   if(gridSize.size() == 0) {
     for(int i = 0; i < gpuId.size(); i++) {
@@ -304,7 +337,7 @@ int main(int argc, char* argv[]) {
   }
 
   Kangaroo *v = new Kangaroo(secp,dp,gpuEnable,workFile,iWorkFile,savePeriod,saveKangaroo,
-                             maxStep,wtimeout,port,ntimeout,serverIP,outputFile,splitWorkFile);
+                             maxStep,wtimeout,port,ntimeout,serverIP,outputFile,splitWorkFile,multG,prejmpbits, multiplerJMPstr);
   if(checkFlag) {
     v->Check(gpuId,gridSize);  
     exit(0);

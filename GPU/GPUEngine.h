@@ -68,6 +68,8 @@ private:
   int nbThread;
   int nbThreadPerGroup;
   uint64_t *inputKangaroo;
+  uint64_t* inputKangaroounalign;
+  int alignMemoryGpu;
   uint64_t *inputKangarooPinned;
   uint32_t *outputItem;
   uint32_t *outputItemPinned;

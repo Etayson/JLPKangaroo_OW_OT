@@ -97,7 +97,7 @@ bool Kangaroo::LoadWork(string &fileName) {
   ::fread(&key.y.bits64,32,1,fRead); key.y.bits64[4] = 0;
   ::fread(&offsetCount,sizeof(uint64_t),1,fRead);
   ::fread(&offsetTime,sizeof(double),1,fRead);
-  
+  offsetTime = 0;
   key.z.SetInt32(1);
   if(!secp->EC(key)) {
     ::printf("LoadWork: key does not lie on elliptic curve\n");
@@ -109,6 +109,9 @@ bool Kangaroo::LoadWork(string &fileName) {
   ::printf("Start:%s\n",rangeStart.GetBase16().c_str());
   ::printf("Stop :%s\n",rangeEnd.GetBase16().c_str());
   ::printf("Keys :%d\n",(int)keysToSearch.size());
+  ::printf("KeyX :%s\n", key.x.GetBase16().c_str());
+  ::printf("KeyY :%s\n", key.y.GetBase16().c_str());
+
 
   // Read hashTable
   hashTable.LoadTable(fRead);

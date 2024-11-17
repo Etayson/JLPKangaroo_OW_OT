@@ -19,10 +19,10 @@
 #define CONSTANTSH
 
 // Release number
-#define RELEASE "1.7"
+#define RELEASE "1.7Gfix"
 
-//#define ONLY_WILD
-#define ONLY_TAME
+#define ONLY_WILD
+//#define ONLY_TAME
 // Use symmetry
 //#define USE_SYMMETRY
 //#define USE_YNEG
@@ -33,8 +33,9 @@
 // GPU group size
 #define GPU_GRP_SIZE 128
 
+
 // GPU number of run per kernel call
-#define NB_RUN 64
+#define NB_RUN 128
 
 // Kangaroo type
 #define TAME 0  // Tame kangaroo

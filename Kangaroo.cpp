@@ -34,7 +34,7 @@ using namespace std;
 // ----------------------------------------------------------------------------
 
 Kangaroo::Kangaroo(Secp256K1 *secp,int32_t initDPSize,bool useGpu,string &workFile,string &iWorkFile,uint32_t savePeriod,bool saveKangaroo,
-                   double maxStep,int wtimeout,int port,int ntimeout,string serverIp,string outputFile,bool splitWorkfile) {
+                   double maxStep,int wtimeout,int port,int ntimeout,string serverIp,string outputFile,bool splitWorkfile, string multG, string prejmpbits, string multiplerJMPstr) {
 
   this->secp = secp;
   this->initDPSize = initDPSize;
@@ -62,6 +62,26 @@ Kangaroo::Kangaroo(Secp256K1 *secp,int32_t initDPSize,bool useGpu,string &workFi
   this->collisionInSameHerd = 0;
   this->keyIdx = 0;
   this->splitWorkfile = splitWorkfile;
+  this->multG = multG;
+  this->prejmpbits = prejmpbits;
+  this->multiplerJMPstr = multiplerJMPstr;
+
+  //G multipler
+  char* newgm = new char[multG.length() + 1];
+  std::strcpy(newgm, multG.c_str());
+  multiplerG.SetBase16(newgm);
+  ::printf("G Multipler: 0x%s\n", multiplerG.GetBase16().c_str());
+
+  char* newpjb = new char[prejmpbits.length() + 1];
+  std::strcpy(newpjb, prejmpbits.c_str());
+  previousjmpbits = atoi(newpjb);  
+  
+
+  //JMP multipler
+  char* newjmpmult = new char[multiplerJMPstr.length() + 1];
+  std::strcpy(newjmpmult, multiplerJMPstr.c_str());
+  multiplerJMP.SetBase16(newjmpmult);
+  ::printf("JMP Multipler: 0x%s\n", multiplerJMP.GetBase16().c_str());
 
   CPU_GRP_SIZE = 1024;
 
@@ -253,7 +273,7 @@ bool  Kangaroo::CheckKey(Int d1,Int d2,uint8_t type) {
 bool Kangaroo::CollisionCheck(Int *dist,uint32_t kType) {
 
   uint32_t type = hashTable.GetType();
-
+  Int dsttame;
   if(type == kType) {
 
     // Collision inside the same herd
@@ -268,7 +288,11 @@ bool Kangaroo::CollisionCheck(Int *dist,uint32_t kType) {
       Td.Set(dist);
       Wd.Set(hashTable.GetD());
     }  else {
-      Td.Set(hashTable.GetD());
+      dsttame = hashTable.GetD();
+      //::printf("Cur td: %s\n", dsttame.GetBase16().c_str());
+      dsttame.Mult(&multiplerG);
+      //::printf("Mult td: %s\n", dsttame.GetBase16().c_str());
+      Td.Set(&dsttame);
       Wd.Set(dist);
     }
 
@@ -777,12 +801,16 @@ void Kangaroo::CreateHerd(int nbKangaroo,Int *px,Int *py,Int *d,int firstType,bo
 // ----------------------------------------------------------------------------
 
 void Kangaroo::CreateJumpTable() {
+int rp = rangePower;
+if (prejmpbits != "0") rp = previousjmpbits;
 
 #ifdef USE_SYMMETRY
-  int jumpBit = rangePower / 2;
+  int jumpBit = rp / 2;
 #else
-  int jumpBit = rangePower / 2 + 1;
+  int jumpBit = rp / 2 + 1;
 #endif
+
+  ::printf("JMP bits DEC: %i\n", jumpBit);
 
   if(jumpBit > 128) jumpBit = 128;
   int maxRetry = 100;
@@ -790,8 +818,8 @@ void Kangaroo::CreateJumpTable() {
   double maxAvg = pow(2.0,(double)jumpBit - 0.95);
   double minAvg = pow(2.0,(double)jumpBit - 1.05);
   double distAvg;
-  //::printf("Jump Avg distance min: 2^%.2f\n",log2(minAvg));
-  //::printf("Jump Avg distance max: 2^%.2f\n",log2(maxAvg));
+  ::printf("Jump Avg distance min: 2^%.2f\n",log2(minAvg));
+  ::printf("Jump Avg distance max: 2^%.2f\n",log2(maxAvg));
 
   // Kangaroo jumps
   // Constant seed for compatibilty of workfiles
@@ -815,14 +843,15 @@ void Kangaroo::CreateJumpTable() {
 
   for(int i = 0; i < NB_JUMP; ++i) {
 	//::printf("=%s\n", jumpDistance[i].GetBase16().c_str());
-	
+    jumpDistance[i].Mult(&multiplerJMP);
     Point J = secp->ComputePublicKey(&jumpDistance[i]);
     jumpPointx[i].Set(&J.x);
     jumpPointy[i].Set(&J.y);
 	//::printf("[%d] %s [%s]\n", i, jumpDistance[i].GetBase16().c_str(), jumpPointx[i].GetBase16().c_str());
   }
+  ::printf("Jump multipled by: 0x%s \n", multiplerJMP.GetBase16().c_str());
 
-  ::printf("Jump Avg distance: 2^%.2f\n",log2(distAvg));
+  ::printf("Jump Avg distance: 2^%.2f [%d]\n",log2(distAvg), maxRetry);
 
   unsigned long seed = Timer::getSeed32();
   rseed(seed);
