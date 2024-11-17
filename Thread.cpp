@@ -294,7 +294,9 @@ void Kangaroo::Process(TH_PARAM *params,std::string unit) {
     lastkeyRate[filterPos%FILTER_SIZE] = keyRate;
     lastGpukeyRate[filterPos%FILTER_SIZE] = gpuKeyRate;
     filterPos++;
-
+    //Troubleshooting speed display issues
+    avgKeyRate = 0.0;
+    avgGpuKeyRate = 0.0;
     // KeyRate smoothing
     uint32_t nbSample;
     for(nbSample = 0; (nbSample < FILTER_SIZE) && (nbSample < filterPos); nbSample++) {
