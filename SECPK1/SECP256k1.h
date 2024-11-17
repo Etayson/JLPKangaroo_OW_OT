@@ -28,7 +28,7 @@ public:
 
   Secp256K1();
   ~Secp256K1();
-  void  Init();
+  void  Init(std::string Gx, std::string Gy);
   Point ComputePublicKey(Int *privKey,bool reduce=true);
   std::vector<Point> ComputePublicKeys(std::vector<Int> &privKeys);
   Point NextKey(Point &key);

@@ -72,6 +72,9 @@ __device__ __constant__ uint64_t _O[] = { 0xBFD25E8CD0364141ULL,0xBAAEDCE6AF48A0
 #define bswap32(v) __byte_perm(v, 0, 0x0123)
 
 // ---------------------------------------------------------------------------------------
+#define Add128(r,a) { \
+  UADDO1((r)[0], (a)[0]); \
+  UADD1((r)[1], (a)[1]);}
 
 #define Add2(r, a, b) {\
   UADDO(r[0], a[0], b[0]); \
@@ -187,7 +190,7 @@ out[pos*ITEM_SIZE32 + 18] = ((uint32_t *)idx)[1]; \
 
 // ---------------------------------------------------------------------------------------
 
-__device__ void LoadKangaroos(uint64_t *a,uint64_t px[GPU_GRP_SIZE][4],uint64_t py[GPU_GRP_SIZE][4],uint64_t dist[GPU_GRP_SIZE][4],uint64_t *jumps) {
+__device__ __noinline__ void LoadKangaroos(uint64_t *a,uint64_t px[GPU_GRP_SIZE][4],uint64_t py[GPU_GRP_SIZE][4],uint64_t dist[GPU_GRP_SIZE][4],uint64_t *jumps) {
 
   for(int g = 0; g<GPU_GRP_SIZE; g++) {
     
@@ -218,9 +221,60 @@ __device__ void LoadKangaroos(uint64_t *a,uint64_t px[GPU_GRP_SIZE][4],uint64_t 
 
 }
 
+__device__ void LoadKangaroo1(uint64_t* a, uint64_t px[4], uint64_t py[4], uint64_t dist[4], int g) {
+
+        uint64_t* x64 = (uint64_t*)px;
+        uint64_t* y64 = (uint64_t*)py;
+        uint64_t* d64 = (uint64_t*)dist;
+        uint32_t stride = g * KSIZE * blockDim.x;
+
+        x64[0] = (a)[IDX + 0 * blockDim.x + stride];
+        x64[1] = (a)[IDX + 1 * blockDim.x + stride];
+        x64[2] = (a)[IDX + 2 * blockDim.x + stride];
+        x64[3] = (a)[IDX + 3 * blockDim.x + stride];
+
+        y64[0] = (a)[IDX + 4 * blockDim.x + stride];
+        y64[1] = (a)[IDX + 5 * blockDim.x + stride];
+        y64[2] = (a)[IDX + 6 * blockDim.x + stride];
+        y64[3] = (a)[IDX + 7 * blockDim.x + stride];
+
+        d64[0] = (a)[IDX + 8 * blockDim.x + stride];
+        d64[1] = (a)[IDX + 9 * blockDim.x + stride];
+        d64[2] = (a)[IDX + 10 * blockDim.x + stride];
+        d64[3] = (a)[IDX + 11 * blockDim.x + stride];
+
+
+
+}
+
+__device__ void StoreKangaroo1(uint64_t* a, uint64_t px[4], uint64_t py[4], uint64_t dist[4], int g) {
+
+    
+        uint64_t* x64 = (uint64_t*)px;
+        uint64_t* y64 = (uint64_t*)py;
+        uint64_t* d64 = (uint64_t*)dist;
+        uint32_t stride = g * KSIZE * blockDim.x;
+
+        (a)[IDX + 0 * blockDim.x + stride] = x64[0];
+        (a)[IDX + 1 * blockDim.x + stride] = x64[1];
+        (a)[IDX + 2 * blockDim.x + stride] = x64[2];
+        (a)[IDX + 3 * blockDim.x + stride] = x64[3];
+
+        (a)[IDX + 4 * blockDim.x + stride] = y64[0];
+        (a)[IDX + 5 * blockDim.x + stride] = y64[1];
+        (a)[IDX + 6 * blockDim.x + stride] = y64[2];
+        (a)[IDX + 7 * blockDim.x + stride] = y64[3];
+
+        (a)[IDX + 8 * blockDim.x + stride] = d64[0];
+        (a)[IDX + 9 * blockDim.x + stride] = d64[1];
+        (a)[IDX + 10 * blockDim.x + stride] = d64[2];
+        (a)[IDX + 11 * blockDim.x + stride] = d64[3];
+
+}
+
 // ---------------------------------------------------------------------------------------
 
-__device__ void StoreKangaroos(uint64_t *a,uint64_t px[GPU_GRP_SIZE][4],uint64_t py[GPU_GRP_SIZE][4],uint64_t dist[GPU_GRP_SIZE][4],uint64_t *jumps) {
+__device__ __noinline__ void StoreKangaroos(uint64_t *a,uint64_t px[GPU_GRP_SIZE][4],uint64_t py[GPU_GRP_SIZE][4],uint64_t dist[GPU_GRP_SIZE][4],uint64_t *jumps) {
 
   for(int g = 0; g < GPU_GRP_SIZE; g++) {
     uint64_t *x64 = (uint64_t *)px[g];
@@ -467,7 +521,8 @@ __device__ bool ModPositive256(uint64_t *r) {
 #define IS_EVEN(x) ((x&1LL)==0)
 #define MSK62 0x3FFFFFFFFFFFFFFF
 
-__device__ __noinline__ void _ModInv(uint64_t *R) {
+
+__device__  void _ModInv(uint64_t *R) {
 
   // Compute modular inverse of R mop _P (using 320bits signed integer)
   // 0 < this < P  , P must be odd
@@ -904,5 +959,49 @@ __device__ __noinline__ void _ModInvGrouped(uint64_t r[GPU_GRP_SIZE][4]) {
   }
 
   Load256(r[0],inverse);
+
+}
+
+__device__ void ADDz1(uint64_t* rrx, uint64_t* rry, uint64_t* rrz, uint64_t* p1x, uint64_t* p1y, uint64_t* p1z, uint64_t* p2x, uint64_t* p2y) {
+    // P2.z = 1
+    uint64_t rx[4];
+    uint64_t ry[4];
+    uint64_t rz[4];
+    uint64_t u[4];
+    uint64_t v[4];
+    uint64_t u1[4];
+    uint64_t v1[4];
+    uint64_t us2[4];
+    uint64_t us2w[4];
+    uint64_t vs2[4];
+    uint64_t vs3[4];
+    uint64_t vs2v2[4];
+    uint64_t vs3u2[4];
+    uint64_t _2vs2v2[4];
+    uint64_t a[4];
+
+    _ModMult(u1, p2y, p1z);
+    _ModMult(v1, p2x, p1z);
+    ModSub256(u, u1, p1y);
+    ModSub256(v, v1, p1x);
+    _ModSqr(us2, u);
+    _ModSqr(vs2, v);
+    _ModMult(vs3, vs2, v);
+    _ModMult(us2w, us2, p1z);
+    _ModMult(vs2v2, vs2, p1x);
+    ModAdd256(_2vs2v2, vs2v2, vs2v2);
+    ModSub256(a, us2w, vs3);
+    ModSub256(a, _2vs2v2);
+
+    _ModMult(rx, v, a);
+    _ModMult(vs3u2, vs3, p1y);
+    ModSub256(ry, vs2v2, a);
+    _ModMult(ry, ry, u);
+    ModSub256(ry, vs3u2);
+    _ModMult(rz, vs3, p1z);
+
+    Load256(rrx, rx);
+    Load256(rry, ry);
+    Load256(rrz, rz);
 
 }

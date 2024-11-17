@@ -22,7 +22,7 @@
 Secp256K1::Secp256K1() {
 }
 
-void Secp256K1::Init() {
+void Secp256K1::Init(std::string Gx, std::string Gy) {
 
   // Prime for the finite field
   Int P;
@@ -32,11 +32,17 @@ void Secp256K1::Init() {
   Int::SetupField(&P);
 
   // Generator point and order
-  G.x.SetBase16("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798");
-  G.y.SetBase16("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8");
+  char* newgx = new char[Gx.length() + 1];
+  std::strcpy(newgx, Gx.c_str());
+  char* newgy = new char[Gy.length() + 1];
+  std::strcpy(newgy, Gy.c_str());
+
+  G.x.SetBase16(newgx);
+  G.y.SetBase16(newgy);
   G.z.SetInt32(1);
   order.SetBase16("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141");
-
+  ::printf("Gx=%s\n", G.x.GetBase16().c_str());
+  ::printf("Gy=%s\n", G.y.GetBase16().c_str());
   Int::InitK1(&order);
 
   // Compute Generator table

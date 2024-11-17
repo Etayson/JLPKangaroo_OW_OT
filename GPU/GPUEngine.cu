@@ -128,7 +128,8 @@ GPUEngine::GPUEngine(int nbThreadGroup,int nbThreadPerGroup,int gpuId,uint32_t m
   deviceName = std::string(tmp);
 
   // Prefer L1 (We do not use __shared__ at all)
-  err = cudaDeviceSetCacheConfig(cudaFuncCachePreferShared);
+  err = cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+  //err = cudaDeviceSetCacheConfig(cudaFuncCachePreferShared);
   if(err != cudaSuccess) {
     printf("GPUEngine: %s\n",cudaGetErrorString(err));
     return;
@@ -136,18 +137,25 @@ GPUEngine::GPUEngine(int nbThreadGroup,int nbThreadPerGroup,int gpuId,uint32_t m
 
   // Allocate memory
   inputKangaroo = NULL;
+  inputKangaroounalign = NULL;
   inputKangarooPinned = NULL;
   outputItem = NULL;
   outputItemPinned = NULL;
   jumpPinned = NULL;
+  alignMemoryGpu = 256;
 
   // Input kangaroos
   kangarooSize = nbThread * GPU_GRP_SIZE * KSIZE * 8;
-  err = cudaMalloc((void **)&inputKangaroo,kangarooSize);
+  err = cudaMalloc((void **)&inputKangaroounalign,kangarooSize + alignMemoryGpu);
   if(err != cudaSuccess) {
     printf("GPUEngine: Allocate input memory: %s\n",cudaGetErrorString(err));
     return;
   }
+
+  size_t inputKangaroounalignInt = reinterpret_cast<size_t>(inputKangaroounalign);
+  size_t alignedPtr  = (inputKangaroounalignInt  + alignMemoryGpu - 1) & ~(alignMemoryGpu - 1);   
+  inputKangaroo = reinterpret_cast<uint64_t*>(alignedPtr);
+
   kangarooSizePinned = nbThreadPerGroup * GPU_GRP_SIZE *  KSIZE * 8;
   err = cudaHostAlloc(&inputKangarooPinned,kangarooSizePinned,cudaHostAllocWriteCombined | cudaHostAllocMapped);
   if(err != cudaSuccess) {
@@ -182,7 +190,7 @@ GPUEngine::GPUEngine(int nbThreadGroup,int nbThreadPerGroup,int gpuId,uint32_t m
 
 GPUEngine::~GPUEngine() {
 
-  if(inputKangaroo) cudaFree(inputKangaroo);
+  if(inputKangaroounalign) cudaFree(inputKangaroounalign);
   if(outputItem) cudaFree(outputItem);
   if(inputKangarooPinned) cudaFreeHost(inputKangarooPinned);
   if(outputItemPinned) cudaFreeHost(outputItemPinned);
@@ -465,7 +473,7 @@ void GPUEngine::SetKangaroo(uint64_t kIdx,Int *px,Int *py,Int *d) {
 }
 
 bool GPUEngine::callKernel() {
-
+  
   // Reset nbFound
   cudaMemset(outputItem,0,4);
 
